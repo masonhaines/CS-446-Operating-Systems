@@ -63,3 +63,5 @@ int sumArray(int parsedValues[], int numOfValues) {
 
     return totalSum;
 }
+
+//this is a comment 
