@@ -1,5 +1,4 @@
 //Mason Haines CS446 Operating Systems 
-#include <bits/types/struct_timeval.h>
 #include <stdio.h>
 #include <sys/time.h>
 
@@ -13,7 +12,8 @@ int main(int argc, char* argv[]) {
     struct timeval startTime, endTime;
     
     // Parse file and load into array and return size of array
-    int numOfvalues = readFile("ten.txt", numArray);
+    int numOfvalues = readFile(argv[1], numArray);
+    // printf("number of values : %d\n", numOfvalues); // For testing 
     if (numOfvalues == -1) return 1; // End program with return 1 if file is not found 
 
     gettimeofday(&startTime, NULL); // Start clock for summation time 
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
     // Calculate the time taken in milliseconds
     long seconds = endTime.tv_sec - startTime.tv_sec;
     long micros = endTime.tv_usec - startTime.tv_usec;
-    double milliseconds = (seconds * 1000) + (double) micros / 1000;
+    double milliseconds = (seconds * 1000000) + (double) micros / 1000;
 
     printf("Time taken (ms): %.6f\n", milliseconds); // Print Total time taken to calculate sum of array
 
@@ -63,5 +63,3 @@ int sumArray(int parsedValues[], int numOfValues) {
 
     return totalSum;
 }
-
-//this is a comment 
