@@ -8,7 +8,7 @@ int sumArray(int parsedValues[], int numOfValues);
 
 int main(int argc, char* argv[]) {
     
-    long long int numArray[1000000000];
+    int numArray[1000];
     struct timeval startTime, endTime;
     
     // Parse file and load into array and return size of array

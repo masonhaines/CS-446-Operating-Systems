@@ -1,16 +1,16 @@
-all: looped_sum threaded_sum
+All: looped_sum threaded_sum
 
 looped_sum: looped_sum.o
-    gcc -o looped_sum looped_sum.o
+	gcc -g -o looped_sum looped_sum.o
 
 looped_sum.o: looped_sum.c 
-    gcc -c looped_sum.c
+	gcc -g -c looped_sum.c
 
 threaded_sum: threaded_sum.o
-    gcc -o threaded_sum threaded_sum.o -pthread
+	gcc -g -o threaded_sum threaded_sum.o
 
 threaded_sum.o: threaded_sum.c 
-    gcc -c threaded_sum.c
+	gcc -g -c threaded_sum.c
 
 clean:
-    rm -f *.o looped_sum threaded_sum
+	rm *.o looped_sum threaded_sum
