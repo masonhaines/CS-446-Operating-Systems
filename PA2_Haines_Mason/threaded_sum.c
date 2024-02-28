@@ -26,12 +26,14 @@ int main(int argc, char* argv[]) {
         return -1;
     }
     
-    int numArray[1000000];
+    static int numArray[100000000];
     int numOfThreads = atoi(argv[1]);
     long long int totalSum = 0;
     struct timeval startTime, endTime, totalTimeStart, totalTimeEnd;
     
     // Parse file and load into array and return size of array
+    printf("before read \n"); // testing 
+
     int numOfValues = readFile(argv[2], numArray);
     // End program with return 1 if file is not found 
     if (numOfValues == -1) return 1; 
@@ -39,18 +41,21 @@ int main(int argc, char* argv[]) {
         printf("Too many threads requested.\n");
         return -1 ;
     }
-
+    printf("before gettime of day  \n"); // testing 
     gettimeofday(&totalTimeStart, NULL); // Start clock for entire thread summation time 
 
-    pthread_mutex_t lock; // is this supposed to be a pointer?---------------------------------------------
-    // if (atoi(argv[3]) != 0) {
-    //     pthread_mutex_init(&lock, NULL);
-    // } 
-    if (atoi(argv[3]) != 0) {
-        pthread_mutex_init(&lock, NULL);
-    } else {
-        lock = NULL;
+    pthread_mutex_t lock;
+    pthread_mutex_t *lockptr = NULL;
+    int lockUnlock = atoi(argv[3]);
+    if (lockUnlock == 1 ) {
+        if(pthread_mutex_init(&lock, NULL) != 0) {
+            printf("Failed to Initialize mutex lock.");
+            return -1;
+        }
+        lockptr = &lock;
     }
+    
+    printf("after init of lcok  \n"); // testing -----------------------
 
     thread_data_t threadDataArray[numOfThreads];
     int slice = numOfValues / numOfThreads; // The grouping of values per thread, the "slice"
@@ -65,21 +70,22 @@ int main(int argc, char* argv[]) {
         } else {
             threadDataArray[i].endInd = (i + 1) * slice - 1;
         }
-        threadDataArray[i].lock = &lock;
+        threadDataArray[i].lock = lockptr;
         threadDataArray[i].totalSum = &totalSum;
 
         // printf("Slice size for thread %d: %d\n", i, threadDataArray[i].endInd - threadDataArray[i].startInd + 1); // testing 
     }
+    printf("aftre struct vars init \n"); // testing 
 
     pthread_t threadsArray[numOfThreads];
 
-    gettimeofday(&startTime, NULL); // Start clock for pthread summation time
-
     for (int i = 0; i < numOfThreads; i++) {
+         printf("pthread create loop \n"); // testing 
         int creationStatus = pthread_create(&threadsArray[i], 
         NULL, 
         sumArray, 
         (void*)&threadDataArray[i]); // Typecast the input pointer 
+         printf("post create \n"); // testing 
         // Edge case if thread creation fails
         if (creationStatus) {
             printf("Failed to create thread at: %d\n", i);
@@ -92,20 +98,14 @@ int main(int argc, char* argv[]) {
         pthread_join(threadsArray[i], NULL);
     }
     
-    gettimeofday(&endTime, NULL); // End clock for summation time 
     gettimeofday(&totalTimeEnd, NULL);
 
     // Calculate the time taken in milliseconds
-    long seconds = endTime.tv_sec - startTime.tv_sec;
-    long micros = endTime.tv_usec - startTime.tv_usec;
-    double milliseconds = (seconds * 1000000) + (double) micros / 1000;
-
     long totalSeconds = totalTimeEnd.tv_sec - totalTimeStart.tv_sec;
     long totalMicros = totalTimeEnd.tv_usec - totalTimeStart.tv_usec;
     double totalMS = (totalSeconds * 1000000) + (double) totalMicros / 1000;
 
     printf("Final sum: %lld\n", totalSum);
-    printf("Time taken (ms): %.6f\n", milliseconds); // Print time taken to calculate pthread array summation 
     printf("Total Time taken (ms): %.6f\n", totalMS); // Print Total time taken to calculate sum of array
     return 0;
 }
@@ -131,8 +131,11 @@ int readFile(char txtFile[], int parsedValues[]) {
 
 // Function to find the total sum of all numbers read from file and stored in an array
 void* sumArray(void *arg) {
-    thread_data_t *threadDataArray = arg; // Create new thread data object to set equal to arg
+        printf("very begin \n"); // testing 
+
+    thread_data_t *threadDataArray = (thread_data_t*)arg; // Create new thread data object to set equal to arg
     long long int threadSum = 0;
+        printf("after vars \n"); // testing 
 
     // Loop through for thread sum
     for (int i = threadDataArray->startInd; i <= threadDataArray->endInd ; i++) {
@@ -145,8 +148,10 @@ void* sumArray(void *arg) {
     if (threadDataArray->lock == NULL) {
         *threadDataArray->totalSum += threadSum;
         printf("i made it inside the sum Array function and was NOT locked for crit point \n"); // testing 
+    } 
+    else {
+        printf("i made it inside the sum Array function and--WAS--locked for crit point \n"); // testing 
 
-    } else {
         pthread_mutex_lock(threadDataArray->lock);
         *threadDataArray->totalSum += threadSum; // Dereference pointer to threaded data array total Sum
         pthread_mutex_unlock(threadDataArray->lock);
