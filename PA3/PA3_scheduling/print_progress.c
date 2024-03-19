@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
-#include <ctype.h>
-#include <time.h>
+// #include <ctype.h>
+// #include <time.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/syscall.h>

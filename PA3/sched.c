@@ -4,16 +4,25 @@
 #include <pthread.h>
 #include <sys/time.h>
 #include <time.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <string.h>
+#include <sys/mman.h>
 
-// typedef struct _thread_data_t { 
-    
-//     const int *data; //pointer to array of data read from file (ALL) 
-//     int startInd; //starting index of thread’s slice     
-//     int endInd; //ending index of thread’s slice 
-//     long long int *totalSum; //pointer to the total sum variable in main      
-//     pthread_mutex_t *lock; //critical region lock   
-    
-// } thread_data_t; 
+#define ANSI_COLOR_GRAY    "\x1b[30m"
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_WHITE   "\x1b[37m"
+
+#define ANSI_COLOR_RESET   "\x1b[0m"
+
+#define TERM_CLEAR() printf("\033[H\033[J")
+#define TERM_GOTOXY(x,y) printf("\033[%d;%dH", (y), (x))
 
 typedef struct thread_data_t { 
 
@@ -25,11 +34,8 @@ typedef struct thread_data_t {
 
 } thread_data_t; 
 
-
-// Function prototypes
-// int readFile(char file[], int parsedValues[]);
-// void* sumArray(void *arg);
 void* arraySum(void *arg);
+void print_progress(pid_t localTid, size_t value);
 
 int main(int argc, char* argv[]) {
 
@@ -39,38 +45,18 @@ int main(int argc, char* argv[]) {
         return -1;
     }
     
-    
     int* numArray = (int *)malloc(2000000 * sizeof(int)); // Dynamically allocate a fixed-size array of 2,000,000 ints.
     int numOfThreads = atoi(argv[1]); // Convert number of threads argc to integer
     long long int totalSum = 0; // Initialize total sum variable 
     struct timeval startTime, endTime, totalTimeStart, totalTimeEnd;
-    
-    // Parse file and load into array and return size of array
-    // int numOfValues = readFile(argv[2], numArray);
-    // End program with return 1 if file is not found 
-    // if (numOfValues == -1) return 1; 
-    // else if (numOfValues < numOfThreads) {
-    //     printf("Too many threads requested.\n");
-    //     return -1 ;
-    // }
-
-    // Start timer for recording threaded summation 
-    // gettimeofday(&totalTimeStart, NULL); // Start clock for entire thread summation time 
 
     pthread_mutex_t lock; // local mutex lock object for locked initialization
     pthread_mutex_t *lockptr = NULL; // pointer mutex lock object for unlocked set to NULL
-    // int lockUnlock = atoi(argv[3]);
-    // If user argc is 1 initialize and set local lock to lock pointer 
-    // if (lockUnlock == 1 ) { 
+    
     pthread_mutex_init(&lock, NULL);
     lockptr = &lock; 
-    // }
 
     thread_data_t threadDataArray[numOfThreads];
-
-
-    // int slice = numOfValues / numOfThreads; // The grouping of values per thread, the "slice"
-    // int remainder = numOfValues % numOfThreads;
 
     // Initialize struct variables for threaded data array
     for (int i = 0; i < numOfThreads; i++) {
@@ -80,20 +66,6 @@ int main(int argc, char* argv[]) {
         threadDataArray[i].lock = lockptr;
         threadDataArray[i].totalSum = &totalSum;
     }
-
-    // Initialize struct variables for threaded data array
-    // for (int i = 0; i < numOfThreads; i++) {
-    //     threadDataArray[i].data = numArray;
-    //     threadDataArray[i].startInd = i * slice;
-    //     if (0 < remainder) {
-    //         threadDataArray[i].endInd = (i + 1) * slice;
-    //     } else {
-    //         threadDataArray[i].endInd = (i + 1) * slice - 1;
-    //     }
-    //     threadDataArray[i].lock = lockptr;
-    //     threadDataArray[i].totalSum = &totalSum;
-    // }
-
 
     pthread_t threadsArray[numOfThreads];
 
@@ -114,20 +86,6 @@ int main(int argc, char* argv[]) {
         pthread_join(threadsArray[i], NULL);
     }
     
-    // if (lockUnlock == 1) {
-    // pthread_mutex_destroy(&lock);
-    // }
-    
-    // End timer for recording threaded summation 
-    // gettimeofday(&totalTimeEnd, NULL);
-
-    // Calculate the time taken in milliseconds
-    // long totalSeconds = totalTimeEnd.tv_sec - totalTimeStart.tv_sec;
-    // long totalMicros = totalTimeEnd.tv_usec - totalTimeStart.tv_usec;
-    // double totalMS = (totalSeconds * 1000000) + (double) totalMicros / 1000;
-
-    printf("Final sum: %lld\n", totalSum);
-    // printf("Total Time taken (milliseconds): %.6f\n", totalMS); // Print Total time taken to calculate sum of array
     return 0;
 }
 
@@ -138,73 +96,72 @@ void* arraySum(void *arg) {
     while(1) {
         // Loop through for thread sum
         double maxLatency;
+
         for (int i = 0; i < threadDataArray->numVals ; i++) {
-            struct timespec startTime, endTime; // time spec objects tot record time 
-            long int duration; // create time duration variable, for nano seconds 
+            struct timespec startTime, endTime; // time spec objects to record timed latency 
+            long int duration; // create time duration variable, for nano seconds, is variable to hold latency 
 
             clock_gettime(CLOCK_MONOTONIC, &startTime);
             threadSum += threadDataArray->data[i];
             clock_gettime(CLOCK_MONOTONIC, &endTime);
             
-            // Calcualte time in nnanoseconds
+            // Calcualte time in nanoseconds
             duration = (endTime.tv_sec - startTime.tv_sec) * 1000000000
                                         +
                        (endTime.tv_nsec - startTime.tv_nsec);
 
-            if (duration > maxLatency) maxLatency = duration;
-            
+            if (duration > maxLatency) maxLatency = duration; // Update maximum observed latency 
         }
         
         pthread_mutex_lock(threadDataArray->lock);
         *threadDataArray->totalSum += threadSum; // Dereference pointer to threaded data array total Sum
         pthread_mutex_unlock(threadDataArray->lock);
+
+        print_progress(threadDataArray->localTid, maxLatency);
     }
     
-    
-
-
-
     return NULL;
 };
 
-// // Function to find the total sum of all numbers read from file and stored in an array
-// void* sumArray(void *arg) {
-//     thread_data_t *threadDataArray = (thread_data_t*)arg; // Create new thread data object to set equal to arg
-//     long long int threadSum = 0;
+void print_progress(pid_t localTid, size_t value) {
+        pid_t tid = syscall(__NR_gettid);
 
-    // // Loop through for thread sum
-    // for (int i = threadDataArray->startInd; i <= threadDataArray->endInd ; i++) {
-    //     threadSum += threadDataArray->data[i];
-    // }
+        TERM_GOTOXY(0,localTid+1);
 
-    // if (threadDataArray->lock == NULL) {
-    //     *threadDataArray->totalSum += threadSum;
-    // } 
-    // else {
-    //     pthread_mutex_lock(threadDataArray->lock);
-    //     *threadDataArray->totalSum += threadSum; // Dereference pointer to threaded data array total Sum
-    //     pthread_mutex_unlock(threadDataArray->lock);
-    // }
+	char prefix[256];
+        size_t bound = 100;
+        sprintf(prefix, "%d: %ld (ns) \t[", tid, value);
+	const char suffix[] = "]";
+	const size_t prefix_length = strlen(prefix);
+	const size_t suffix_length = sizeof(suffix) - 1;
+	char *buffer = calloc(bound + prefix_length + suffix_length + 1, 1);
+	size_t i = 0;
 
-//     return NULL;
-// }
+	strcpy(buffer, prefix);
+	for (; i < bound; ++i)
+	{
+	    buffer[prefix_length + i] = i < value/10000 ? '#' : ' ';
+	}
+	strcpy(&buffer[prefix_length + i], suffix);
+        
+        if (!(localTid % 7)) 
+            printf(ANSI_COLOR_WHITE "\b%c[2K\r%s\n" ANSI_COLOR_RESET, 27, buffer);  
+        else if (!(localTid % 6)) 
+            printf(ANSI_COLOR_BLUE "\b%c[2K\r%s\n" ANSI_COLOR_RESET, 27, buffer);  
+        else if (!(localTid % 5)) 
+            printf(ANSI_COLOR_RED "\b%c[2K\r%s\n" ANSI_COLOR_RESET, 27, buffer);  
+        else if (!(localTid % 4)) 
+            printf(ANSI_COLOR_GREEN "\b%c[2K\r%s\n" ANSI_COLOR_RESET, 27, buffer);  
+        else if (!(localTid % 3)) 
+            printf(ANSI_COLOR_CYAN "\b%c[2K\r%s\n" ANSI_COLOR_RESET, 27, buffer);  
+        else if (!(localTid % 2)) 
+            printf(ANSI_COLOR_YELLOW "\b%c[2K\r%s\n" ANSI_COLOR_RESET, 27, buffer);  
+        else if (!(localTid % 1)) 
+            printf(ANSI_COLOR_MAGENTA "\b%c[2K\r%s\n" ANSI_COLOR_RESET, 27, buffer);  
+        else
+            printf("\b%c[2K\r%s\n", 27, buffer);
 
-// // Function reads integers from a file and stores them in an array and returns the count of values read.
-// int readFile(char txtFile[], int parsedValues[]) {
-//     FILE *in_file = fopen(txtFile, "r"); // Open the file for reading ONLY using r flag 
-//     int numOfValues = 0; // Number of values counted in the file 
-
-//     // Check if file exists
-//     if (in_file == NULL) {
-//         printf("File not found...\n");
-//         return -1; // indicate failure to read file to main
-//     }
-//     // Read values from the file using fscanf
-//     while (fscanf(in_file, "%d", &parsedValues[numOfValues]) == 1) {
-//         numOfValues++;
-//     }
-//     fclose(in_file); // Close the file stream
-
-//     return numOfValues; // Return the number of values parsed
-// }
+	fflush(stdout);
+	free(buffer);
+}
 
