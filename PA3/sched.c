@@ -34,7 +34,7 @@ typedef struct thread_data_t {
 
 } thread_data_t; 
 
-void* arraySum(void *arg);
+void* arraySum(void *arg); // array for busy work 
 void print_progress(pid_t localTid, size_t value);
 
 int main(int argc, char* argv[]) {
@@ -53,12 +53,12 @@ int main(int argc, char* argv[]) {
     pthread_mutex_t lock; // local mutex lock object for locked initialization
     pthread_mutex_t *lockptr = NULL; // pointer mutex lock object for unlocked set to NULL
     
-    pthread_mutex_init(&lock, NULL);
-    lockptr = &lock; 
+    pthread_mutex_init(&lock, NULL); // Initialize lock
+    lockptr = &lock; // Set lock pointer to memory address of lock 
 
     thread_data_t threadDataArray[numOfThreads];
 
-    // Initialize struct variables for threaded data array
+    // Initialize struct variables for threaded array
     for (int i = 0; i < numOfThreads; i++) {
         threadDataArray[i].localTid = i;
         threadDataArray[i].data = numArray;
@@ -67,9 +67,10 @@ int main(int argc, char* argv[]) {
         threadDataArray[i].totalSum = &totalSum;
     }
 
-    pthread_t threadsArray[numOfThreads];
+    pthread_t threadsArray[numOfThreads]; // create array to hold thread identifiers
 
     for (int i = 0; i < numOfThreads; i++) {
+        // Create thread
         int creationStatus = pthread_create(
             &threadsArray[i], 
             NULL, 
@@ -81,7 +82,7 @@ int main(int argc, char* argv[]) {
             return -1; 
         }
     }
-
+    // Wait for each thread to finish execution
     for (int i = 0; i < numOfThreads; i++) {
         pthread_join(threadsArray[i], NULL);
     }
@@ -95,7 +96,7 @@ void* arraySum(void *arg) {
 
     while(1) {
         // Loop through for thread sum
-        double maxLatency;
+        double maxLatency; // Variable for newest and highest latency 
 
         for (int i = 0; i < threadDataArray->numVals ; i++) {
             struct timespec startTime, endTime; // time spec objects to record timed latency 
