@@ -18,6 +18,8 @@ const int invalid_inode_number = 0;  // 0 is "invalid"
 
 const int root_datablock_number = 0;  // 1 because 0 reserved for badsectors data
 
+
+
 typedef struct _block_t {
   char data[BLKSIZE];
 } block_t;
@@ -316,57 +318,130 @@ void my_crawlfs(myfs_t* myfs) {
 
 // IMPLEMENT THIS FUNCTION
 void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname) {
-  int* new_bitMap;
+
+  int bitSet_BOOL = 0;
+  
+  int* new_inode_map;
   // Size of memory to allocate
-  size_t sizeOf_memory_allocation = sizeof(block_t);
+  size_t sizeOfiNode_memory_allocation = sizeof(block_t);
 
-  new_bitMap = (int*)malloc(sizeOf_memory_allocation); // dynamically allocate memory size of int for new inode
+  new_inode_map = (int*)malloc(sizeOfiNode_memory_allocation); // dynamically allocate memory size of int for new inode
   
-  memcpy(new_bitMap, &myfs->imap, sizeOf_memory_allocation); // Copy content of myfs->imap into new_bitMap // reference geeksforgeeks memcpy(to, from, numbytes) 
+  memcpy(new_inode_map, &myfs->imap, sizeOfiNode_memory_allocation); // Copy content of myfs->imap into new_iMap // reference geeksforgeeks memcpy(to, from, numbytes) 
 
-  size_t numBytes = sizeof(new_bitMap);
-  // printf("Size of the bitmap before set: %zu bytes\n", numBytes);
-  // printf("this is the bitmap that was copied before teh set ");
-  // // Print the bitmap
-  // for (size_t i = 0; i < numBytes; i++) {
-  //   for (int j = 0; j < 8; j++) {
-  //     int bitIndex = i * 8 + j;
-  //     printf("%d", (new_bitMap[i] >> j) & 1);
-  //   }
-  //   printf(" ");
-  // }
-  // printf("\n");
+  size_t imapNumBytes = sizeof(new_inode_map);
+
+  // printf("Size of the imap before set: %zu bytes\n", imapNumBytes);
+  printf("this is the imap that was copied before the set ");
+
+  // Print the bitmap
+  for (size_t i = 0; i < imapNumBytes; i++) {
+    for (int j = 0; j < 8; j++) {
+      int bitIndex = i * 8 + j;
+      printf("%d", (new_inode_map[i] >> j) & 1);
+    }
+    printf(" ");
+  }
+  printf("\n\n");
   
-  for (int i = 0; i < numBytes; i++) {
+  for (int i = 0; i < imapNumBytes; i++) {
 
-    if (new_bitMap[i] == 0xFF) {
-        continue;  // Skip if the byte is already filled
+    if (new_inode_map[i] == 0xFF) { // Skip if the byte is already filled
+      continue;  
     }
     // new_bitMap[i]is the array of  bytes, this in a way is a two d array number of bytes x 8
     for (int bytes = 0; bytes < 8; bytes++) {
       
-      // int bitIndex = i * 8 + bytes + 1; for testing 
+      int bitIndex = i * 8 + bytes + 1; //for testing 
 
-      if ((new_bitMap[i / 8] & (0x1 << bytes % 8/*number of shifts left*/)) == 0) {
+      if ((new_inode_map[i / 8] & (0x1 << bytes % 8/*number of shifts left*/)) == 0 && !bitSet_BOOL) {
         // Set the bit and exit the loop
-        new_bitMap[i / 8] |= 0x1 << (bytes % 8/*number of shifts left*/);
+        bitSet_BOOL = 1;
+        new_inode_map[i / 8] |= 0x1 << (bytes % 8/*number of shifts left*/);
         // printf("First unused bit found at index %d\n", bitIndex);
-        // printf("this is the bitmap that was copied after the set ");
-        // // Print the bitmap
-        // for (size_t i = 0; i < numBytes; i++) {
-        //   for (int j = 0; j < 8; j++) {
-        //     int bitIndex = i * 8 + j;
-        //     printf("%d", (new_bitMap[i] >> j) & 1);
-        //   }
-        //     printf(" ");
-        // }
-        //   printf("\n");
-        return;
+        printf("this is the imap that was copied after the set");
+        
+        for (size_t i = 0; i < imapNumBytes; i++) { // Print the bitmap
+          for (int j = 0; j < 8; j++) {
+            int bitIndex = i * 8 + j;
+            printf("%d", (new_inode_map[i] >> j) & 1);
+          }
+            printf("<->");
+        }
+
+        printf("\n");
+        // return;
       }
       
     }
     
   }
+
+  bitSet_BOOL = 0;
+
+  memcpy( &myfs->imap, new_inode_map, sizeOfiNode_memory_allocation); // Copy content of new_bitMap to myfs->imap 
+
+  //-------------------------------------------------------------------------------------------------------------------------//
+
+  int* new_block_map;
+  size_t sizeOfBlock_memory_allocation = sizeof(block_t);
+
+  new_block_map = (int*)malloc(sizeOfBlock_memory_allocation); // dynamically allocate memory size of int for new inode
+  
+  memcpy(new_block_map, &myfs->bmap, sizeOfBlock_memory_allocation); // Copy content of myfs->imap into new_bMap // reference geeksforgeeks memcpy(to, from, numbytes) 
+  
+  size_t bmapNumBytes = sizeof(new_block_map);
+
+  // printf("Size of the bmap before set: %zu bytes\n", bmapNumBytes);
+  printf("this is the bmap that was copied before the set ");
+  
+  // Print the bitmap
+  for (size_t i = 0; i < bmapNumBytes; i++) {
+    for (int j = 0; j < 8; j++) {
+      int bitIndex = i * 8 + j;
+      printf("%d", (new_block_map[i] >> j) & 1);
+    }
+    printf(" ");
+  }
+  printf("\n");
+  
+  for (int i = 0; i < bmapNumBytes; i++) {
+
+    if (new_block_map[i] == 0xFF) { // Skip if the byte is already filled
+      continue;  
+    }
+    // array[i] of bytes, this in a way is a two d (array number of bytes x 8)
+    for (int bytes = 0; bytes < 8; bytes++) {
+      
+      int bitIndex = i * 8 + bytes + 1; //for testing 
+
+      if ((new_block_map[i / 8] & (0x1 << bytes % 8/*number of shifts left*/)) == 0x0 && !bitSet_BOOL) {
+        // Set the bit and exit the loop
+        bitSet_BOOL = 1;
+        new_block_map[i / 8] |= 0x1 << (bytes % 8/*number of shifts left*/);
+        // printf("First unused bit found at index %d\n", bitIndex);
+        printf("this is the bmap that was copied after the set ");
+        
+        for (size_t i = 0; i < bmapNumBytes; i++) { // Print the bitmap
+          for (int j = 0; j < 8; j++) {
+            int bitIndex = i * 8 + j;
+            printf("%d", (new_block_map[i] >> j) & 1);
+          }
+            printf("<->");
+        }
+
+        printf("\n");
+        // return;
+      }
+      
+    }
+    
+  }
+
+  memcpy( &myfs->bmap, new_block_map, sizeOfBlock_memory_allocation); // Copy content of new_bitMap to myfs->imap 
+
+  free(new_block_map);
+  bitSet_BOOL = 0;
 
   
 }
