@@ -1,3 +1,5 @@
+//Mason Haines PA5 
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -335,7 +337,7 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
   printf("this is the imap that was copied before the set ");
 
   // Print the bitmap
-  for (size_t i = 0; i < imapNumBytes; i++) {
+  for (size_t i = 0; i < 1; i++) {
     for (int j = 0; j < 8; j++) {
       int bitIndex = i * 8 + j;
       printf("%d", (new_inode_map[i] >> j) & 1);
@@ -361,7 +363,7 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
         // printf("First unused bit found at index %d\n", bitIndex);
         printf("this is the imap that was copied after the set");
         
-        for (size_t i = 0; i < imapNumBytes; i++) { // Print the bitmap
+        for (size_t i = 0; i < 1; i++) { // Print the bitmap
           for (int j = 0; j < 8; j++) {
             int bitIndex = i * 8 + j;
             printf("%d", (new_inode_map[i] >> j) & 1);
@@ -381,6 +383,8 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
 
   memcpy( &myfs->imap, new_inode_map, sizeOfiNode_memory_allocation); // Copy content of new_bitMap to myfs->imap 
 
+  free(new_inode_map);
+
   //-------------------------------------------------------------------------------------------------------------------------//
 
   int* new_block_map;
@@ -396,7 +400,7 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
   printf("this is the bmap that was copied before the set ");
   
   // Print the bitmap
-  for (size_t i = 0; i < bmapNumBytes; i++) {
+  for (size_t i = 0; i < 1; i++) {
     for (int j = 0; j < 8; j++) {
       int bitIndex = i * 8 + j;
       printf("%d", (new_block_map[i] >> j) & 1);
@@ -415,14 +419,14 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
       
       int bitIndex = i * 8 + bytes + 1; //for testing 
 
-      if ((new_block_map[i / 8] & (0x1 << bytes % 8/*number of shifts left*/)) == 0x0 && !bitSet_BOOL) {
+      if ((new_block_map[i ] & (0x1 << bytes/*number of shifts left*/)) == 0x0 && !bitSet_BOOL) {
         // Set the bit and exit the loop
         bitSet_BOOL = 1;
-        new_block_map[i / 8] |= 0x1 << (bytes % 8/*number of shifts left*/);
+        new_block_map[i] |= 0x1 << (bytes/*number of shifts left*/);
         // printf("First unused bit found at index %d\n", bitIndex);
         printf("this is the bmap that was copied after the set ");
         
-        for (size_t i = 0; i < bmapNumBytes; i++) { // Print the bitmap
+        for (size_t i = 0; i < 1; i++) { // Print the bitmap
           for (int j = 0; j < 8; j++) {
             int bitIndex = i * 8 + j;
             printf("%d", (new_block_map[i] >> j) & 1);
@@ -443,7 +447,50 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
   free(new_block_map);
   bitSet_BOOL = 0;
 
+  //-----------------------------------------------------------------------------------------------------------------------// step 3
+  void *new_inodetable_ptr = calloc(BLKSIZE, sizeof(char));
+
+  inode_t* new_inodeTable;
+  new_inodeTable = myfs->groupdescriptor.groupdescriptor_info.inode_table;
+
+  inode_t* parentDir_inode = &new_inodeTable[cur_dir_inode_number];
+
+  inode_t* newDir_inode = &new_inodeTable[cur_dir_inode_number - 1];
+
+  parentDir_inode->size += sizeof(dirent_t);
+
+  new_inodeTable = (inode_t*)new_inodetable_ptr;
   
+  new_inodeTable[root_inode_number].size = 2 * sizeof(dirent_t);  // will contain 2 direntries ('.' and '..') at initialization
+  new_inodeTable[root_inode_number].blocks = 1;  // will only take up 1 block (for just 2 direntries: '.' and '..') at initialization 
+  for (uint i=1; i<15; ++i)  // initialize all data blocks to NULL (1 data block only needed at initialization)
+  new_inodeTable[root_inode_number].data[i] = NULL;
+  new_inodeTable[root_inode_number].data[0] = &(myfs->groupdescriptor.groupdescriptor_info.block_data[root_datablock_number]);  
+  // write out to fs
+  memcpy((void*)myfs->groupdescriptor.groupdescriptor_info.inode_table, new_inodetable_ptr, BLKSIZE);
+
+  // data (dir)
+  void *dir_ptr = calloc(BLKSIZE, sizeof(char));
+  // read-in (not required, we are creating filesystem for first time, also zeroed because using calloc)
+  dirent_t* dir = (dirent_t*)dir_ptr;
+  // dirent '.'
+  dirent_t* root_dirent_self = &dir[0];
+  {
+  root_dirent_self->name_len = 1;
+  root_dirent_self->inode = root_inode_number;
+  root_dirent_self->file_type = 2;
+  strcpy(root_dirent_self->name, ".");
+  }
+  // dirent '..'
+  dirent_t* root_dirent_parent = &dir[1];
+  {
+  root_dirent_parent->name_len = 2;
+  root_dirent_parent->inode = root_inode_number;
+  root_dirent_parent->file_type = 2;
+  strcpy(root_dirent_parent->name, "..");
+  }
+  
+
 }
 
     // left shift 0 = 00000001
@@ -454,3 +501,8 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
     // left shift 5 = 00100000
     // left shift 6 = 01000000
     // left shift 7 = 10000000
+
+
+// Note: For this simplified implementation you will not be required to use more than 1 Block for
+// each inode, i.e. only data[0] will be used to store file/directory data, but you will have to
+// remember to initialize all the rest of the block_t Pointers in the data array to NULL.
