@@ -344,7 +344,7 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
     }
     printf(" ");
   }
-  printf("\n\n");
+  printf("\n");
   
   for (int i = 0; i < imapNumBytes; i++) {
 
@@ -368,7 +368,7 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
             int bitIndex = i * 8 + j;
             printf("%d", (new_inode_map[i] >> j) & 1);
           }
-            printf("<->");
+            printf(" ");
         }
 
         printf("\n");
@@ -431,7 +431,7 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
             int bitIndex = i * 8 + j;
             printf("%d", (new_block_map[i] >> j) & 1);
           }
-            printf("<->");
+            printf(" ");
         }
 
         printf("\n");
@@ -448,48 +448,110 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
   bitSet_BOOL = 0;
 
   //-----------------------------------------------------------------------------------------------------------------------// step 3
-  void *new_inodetable_ptr = calloc(BLKSIZE, sizeof(char));
+
+  
+  // void *new_inodetable_ptr = calloc(BLKSIZE, sizeof(char));
 
   inode_t* new_inodeTable;
   new_inodeTable = myfs->groupdescriptor.groupdescriptor_info.inode_table;
 
   inode_t* parentDir_inode = &new_inodeTable[cur_dir_inode_number];
-
-  inode_t* newDir_inode = &new_inodeTable[cur_dir_inode_number - 1];
+  inode_t* newDir_inode = &new_inodeTable[cur_dir_inode_number + 1];
 
   parentDir_inode->size += sizeof(dirent_t);
 
-  new_inodeTable = (inode_t*)new_inodetable_ptr;
+  // new_inodeTable = (inode_t*)new_inodetable_ptr;
   
-  new_inodeTable[root_inode_number].size = 2 * sizeof(dirent_t);  // will contain 2 direntries ('.' and '..') at initialization
-  new_inodeTable[root_inode_number].blocks = 1;  // will only take up 1 block (for just 2 direntries: '.' and '..') at initialization 
-  for (uint i=1; i<15; ++i)  // initialize all data blocks to NULL (1 data block only needed at initialization)
-  new_inodeTable[root_inode_number].data[i] = NULL;
-  new_inodeTable[root_inode_number].data[0] = &(myfs->groupdescriptor.groupdescriptor_info.block_data[root_datablock_number]);  
-  // write out to fs
-  memcpy((void*)myfs->groupdescriptor.groupdescriptor_info.inode_table, new_inodetable_ptr, BLKSIZE);
+  newDir_inode->size = 2 * sizeof(dirent_t);  // will contain 2 direntries ('.' and '..') at initialization
+  newDir_inode->blocks = 1;  // will only take up 1 block (for just 2 direntries: '.' and '..') at initialization 
 
-  // data (dir)
-  void *dir_ptr = calloc(BLKSIZE, sizeof(char));
-  // read-in (not required, we are creating filesystem for first time, also zeroed because using calloc)
-  dirent_t* dir = (dirent_t*)dir_ptr;
-  // dirent '.'
-  dirent_t* root_dirent_self = &dir[0];
-  {
-  root_dirent_self->name_len = 1;
-  root_dirent_self->inode = root_inode_number;
-  root_dirent_self->file_type = 2;
-  strcpy(root_dirent_self->name, ".");
+  for (uint i=1; i<15; ++i)  {// initialize all data blocks to NULL (1 data block only needed at initialization)
+    newDir_inode->data[i] = NULL;
   }
-  // dirent '..'
-  dirent_t* root_dirent_parent = &dir[1];
-  {
-  root_dirent_parent->name_len = 2;
-  root_dirent_parent->inode = root_inode_number;
-  root_dirent_parent->file_type = 2;
-  strcpy(root_dirent_parent->name, "..");
-  }
-  
+
+  newDir_inode->data[0] = &(myfs->groupdescriptor.groupdescriptor_info.block_data[root_datablock_number]);  
+  // write out to fs
+  memcpy((void*)myfs->groupdescriptor.groupdescriptor_info.inode_table, (void*)new_inodeTable, BLKSIZE);
+
+  // // data (dir)
+  // void *dir_ptr = calloc(BLKSIZE, sizeof(char));
+  // // read-in (not required, we are creating filesystem for first time, also zeroed because using calloc)
+  // dirent_t* dir = (dirent_t*)dir_ptr;
+  // // dirent '.'
+  // dirent_t* root_dirent_self = &dir[0];
+  // {
+  // root_dirent_self->name_len = 1;
+  // root_dirent_self->inode = root_inode_number;
+  // root_dirent_self->file_type = 2;
+  // strcpy(root_dirent_self->name, ".");
+  // }
+  // // dirent '..'
+  // dirent_t* root_dirent_parent = &dir[1];
+  // {
+  // root_dirent_parent->name_len = 2;
+  // root_dirent_parent->inode = root_inode_number;
+  // root_dirent_parent->file_type = 2;
+  // strcpy(root_dirent_parent->name, "..");
+  // }
+  // free(new_inodetable_ptr);
+  // free(dir_ptr);
+
+  //----------------------------------------------------------------------------------------------------------------/ step 4
+
+  // void *parent_data_ptr = calloc(BLKSIZE, sizeof(char)); 
+  // memcpy(parent_data_ptr, (void*)(parentDir_inode->data[0]), BLKSIZE); 
+  // dirent_t* parent_entries = (dirent_t*)parent_data_ptr;
+  // int num_entries = parentDir_inode->size / sizeof(dirent_t); 
+  // int new_entry_index = num_entries; 
+  // parent_entries[new_entry_index].inode = cur_dir_inode_number +1; 
+  // parent_entries[new_entry_index].file_type = 2; 
+  // parent_entries[new_entry_index].name_len = strlen(new_dirname); 
+  // strcpy(parent_entries[new_entry_index].name, new_dirname); 
+
+  // Access Parent Directory's Inode
+  //   parentDir_inode = &myfs->groupdescriptor.groupdescriptor_info.inode_table[cur_dir_inode_number];
+
+  //   // Access Parent Directory's Data Block
+  //   dirent_t* parent_entries = (dirent_t*)parentDir_inode->data[0];
+    
+  //   // Calculate the number of directory entries currently in the parent directory
+  //   int num_entries = parentDir_inode->size / sizeof(dirent_t);
+
+  //   // Calculate the index for the new directory entry
+  //   int new_entry_index = num_entries;
+
+  //   // Check if there is enough space in the data block to append the new directory entry
+  //   if (new_entry_index >= BLKSIZE / sizeof(dirent_t)) {
+  //       // Not enough space, handle the error
+  //       fprintf(stderr, "Not enough space in parent directory's data block for new entry\n");
+  //       return;
+  //   }
+  // // Update the size of the parent directory inode to reflect the addition of the new directory entry
+  // parentDir_inode->size += sizeof(dirent_t);
+
+  // // Write the modified parent directory's data block back to the Filesystem
+  // memcpy((void*)(parentDir_inode->data[0]), parent_entries, BLKSIZE);
+
+  // free(parent_data_ptr);
+
+  // Access the Parent Directory's data from the Filesystem
+void* parent_dir_data_block = newDir_inode->data[0];
+
+// Reinterpret the Block memory as a dirent_t Pointer
+dirent_t* parent_dir_entries = (dirent_t*)parent_dir_data_block;
+
+// Find out how many Directory Entries were in there before
+int num_entries = newDir_inode->size / sizeof(dirent_t);
+
+// Modify the next Directory Entry to append the new Directory Entry
+dirent_t* new_entry = &parent_dir_entries[num_entries];
+new_entry->inode = cur_dir_inode_number;  // Set the inode number of the new directory
+new_entry->name_len = strlen(new_dirname);  // Use strlen() to find the name length
+strcpy(new_entry->name, new_dirname);  // Copy the new directory name
+
+// Update the Parent Directory's data on the Filesystem
+memcpy((void*)newDir_inode->data[0], (void*)parent_dir_entries, BLKSIZE);
+
 
 }
 
