@@ -327,15 +327,20 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
   // Size of memory to allocate
   size_t sizeOfiNode_memory_allocation = sizeof(block_t);
 
-  new_inode_map = (int*)malloc(sizeOfiNode_memory_allocation); // dynamically allocate memory size of int for new inode
+  new_inode_map = (int*)malloc(sizeof(block_t)); // dynamically allocate memory size of int for new inode
+  if (new_inode_map == NULL) {
+        // Handle error: Memory allocation failed
+        printf("Error: Memory allocation for new_inode_map failed\n");
+        return; // or perform cleanup and return error code
+    }
   
-  memcpy(new_inode_map, &myfs->imap, sizeOfiNode_memory_allocation); // Copy content of myfs->imap into new_iMap // reference geeksforgeeks memcpy(to, from, numbytes) 
+  memcpy(new_inode_map, &myfs->imap, sizeof(block_t)); // Copy content of myfs->imap into new_iMap // reference geeksforgeeks memcpy(to, from, numbytes) 
 
   size_t imapNumBytes = sizeof(new_inode_map);
 
-  int new_inode_index = -1;
+  int new_inode_index;
 
-  for (int i = 0; i < imapNumBytes; i++) {
+  for (int i = 0; i < sizeof(block_t); i++) {
 
     if (new_inode_map[i] == 0xFF) { // Skip if the byte is already filled
       continue;  
@@ -347,14 +352,23 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
       if ((new_inode_map[i] & (0x1 << bit/*number of shifts left*/)) == 0 && !bitSet_BOOL) {
         // Set the bit and exit the loop
         bitSet_BOOL = 1;
-        new_inode_index = i * 8 + bit; 
+        // new_inode_index = i * 8 + bit; 
         new_inode_map[i] |= 0x1 << (bit/*number of shifts left*/);
-        // new_inode_index = bitIndex;
+        new_inode_index = bitIndex;
       }
     }
-    // new_inode_index = i * 8 + bit; 
+    
   }
+
+  if (new_inode_index == -1) {
+        // Handle error: No available inode index found
+        printf("Error: No available inode index found\n");
+        free(new_inode_map); // Cleanup allocated memory
+        // free(new_block_map);
+        return; // or perform cleanup and return error code
+    }
   
+
 
 
   memcpy( &myfs->imap, new_inode_map, sizeOfiNode_memory_allocation); // Copy content of new_bitMap to myfs->imap 
@@ -366,15 +380,21 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
   int* new_block_map;
   size_t sizeOfBlock_memory_allocation = sizeof(block_t);
 
-  new_block_map = (int*)malloc(sizeOfBlock_memory_allocation); // dynamically allocate memory size of int for new inode
+  new_block_map = (int*)malloc(sizeof(block_t)); // dynamically allocate memory size of int for new inode
+  if (new_block_map == NULL) {
+        // Handle error: Memory allocation failed
+        printf("Error: Memory allocation for new_block_map failed\n");
+        free(new_inode_map); // Cleanup previously allocated memory
+        return; // or perform cleanup and return error code
+    }
   
-  memcpy(new_block_map, &myfs->bmap, sizeOfBlock_memory_allocation); // Copy content of myfs->imap into new_bMap // reference geeksforgeeks memcpy(to, from, numbytes) 
+  memcpy(new_block_map, &myfs->bmap, sizeof(block_t)); // Copy content of myfs->imap into new_bMap // reference geeksforgeeks memcpy(to, from, numbytes) 
   
   size_t bmapNumBytes = sizeof(new_block_map);
 
   int new_block_index;
   
-  for (int i = 0; i < bmapNumBytes; i++) {
+  for (int i = 0; i < sizeof(block_t); i++) {
 
     if (new_block_map[i] == 0xFF) { // Skip if the byte is already filled
       continue;  
@@ -382,7 +402,7 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
     // array[i] of bytes, this in a way is a two d (array number of bytes x 8)
     for (int bit = 0; bit < 8; bit++) {
       
-      int bitIndex = i * 8 + bit + 1; //for testing 
+      int bitIndex = i * 8 + bit; //for testing 
 
       if ((new_block_map[i ] & (0x1 << bit/*number of shifts left*/)) == 0x0 && !bitSet_BOOL) {
         // Set the bit and exit the loop
@@ -393,13 +413,24 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
     }
     // new_block_index = i * 8 + 0x1;
   }
+  
 
   memcpy( &myfs->bmap, new_block_map, sizeOfBlock_memory_allocation); // Copy content of new_bitMap to myfs->imap 
   free(new_block_map);
   bitSet_BOOL = 0;
 
   //--------------------------------------------------------// step 3
-  
+  // printf("Value at index %d in new_block_map: %d", new_block_index, new_block_map[new_block_index]);
+  // printf("      Value at index %d in new_inode_map: %d\n", 0, new_inode_map[0]);
+  // printf("      Value at index %d in new_inode_map: %d\n", 1, new_inode_map[1]);
+  // printf("      Value at index %d in new_inode_map: %d\n", 2, new_inode_map[2]);
+  // printf("      Value at index %d in new_inode_map: %d\n", new_inode_index, new_inode_map[new_inode_index]);
+  // Print debugging output
+    printf("IMAP before modifications:\n");
+    for (size_t i = 0; i < imapNumBytes; i++) {
+        printf("Byte %zu: %d\n", i, new_inode_map[i]);
+    }
+    
   
   //part 1 
   inode_t* new_inodeTable;
@@ -418,8 +449,8 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
   }
   newDir_inode->data[0] = &(myfs->groupdescriptor.groupdescriptor_info.block_data[new_block_index/*this is the new root index*/]); 
 
-  printf("Value at index %d in new_block_map: %d\n", new_block_index, new_block_map[new_block_index]);
-  printf("Value at index %d in new_inode_map: %d\n", new_inode_index, new_inode_map[new_inode_index]);
+  printf("Value at index %d in new_block_map: %d", new_block_index, new_block_map[new_block_index]);
+  printf("       Value at index %d in new_inode_map: %d\n", new_inode_index, new_inode_map[new_inode_index]);
 
   
   // Then finally update the inode Table on the Filesystem
@@ -430,36 +461,36 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
   //-------------------------------------------------------------------/ step 4
 
   // Step 4 Part 1: Access the Parent Directory's data from the Filesystem
-// The data will be inside the Data Block location pointed to by the inode.data[0]
-// Since this example uses no more than 1 Block, we'll only need to access that one block.
-block_t* parentDir_data_block = parentDir_inode->data[0];
+  // The data will be inside the Data Block location pointed to by the inode.data[0]
+  // Since this example uses no more than 1 Block, we'll only need to access that one block.
+  block_t* parentDir_data_block = parentDir_inode->data[0];
 
-// Step 4 Part 2: Modify the Parent Directory's data to append the new Directory Entry
-// Reinterpret the Block memory as a dirent_t Pointer to access it like an array
-dirent_t* parentDir_data = (dirent_t*)parentDir_data_block;
+  // Step 4 Part 2: Modify the Parent Directory's data to append the new Directory Entry
+  // Reinterpret the Block memory as a dirent_t Pointer to access it like an array
+  dirent_t* parentDir_data = (dirent_t*)parentDir_data_block;
 
-// Find the last Directory Entry in the Parent Directory to determine where to append the new entry
-int num_entries = 0;
-while (parentDir_data[num_entries].name_len > 0) {
-    num_entries++;
-}
+  // Find the last Directory Entry in the Parent Directory to determine where to append the new entry
+  int num_entries = 0;
+  while (parentDir_data[num_entries].name_len > 0) {
+      num_entries++;
+  }
 
-// Append the new Directory Entry at the next available position
-dirent_t* new_entry = &parentDir_data[num_entries];
-new_entry->inode = new_inode_index; // The inode number of the new directory
-new_entry->name_len = strlen(new_dirname);
-strcpy(new_entry->name, new_dirname);
+  // Append the new Directory Entry at the next available position
+  dirent_t* new_entry = &parentDir_data[num_entries];
+  new_entry->inode = new_inode_index; // The inode number of the new directory
+  new_entry->name_len = strlen(new_dirname);
+  strcpy(new_entry->name, new_dirname);
 
-// Update the Parent Directory's data on the Filesystem after modifying it
-memcpy(parentDir_data_block, parentDir_data, BLKSIZE);
-
-
-  
+  // Update the Parent Directory's data on the Filesystem after modifying it
+  memcpy(parentDir_data_block, parentDir_data, BLKSIZE);
 
 
   
 
-//--------------------------------------------------------------------- part 5
+
+  
+
+  //--------------------------------------------------------------------- part 5
   // data (dir)
   void *dir_ptr = calloc(BLKSIZE, sizeof(char));
   // read-in (not required, we are creating filesystem for first time, also zeroed because using calloc)
