@@ -340,7 +340,7 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
         bitSet_BOOL = 1;
         new_inode_index = i * 8 + bit; 
         new_inode_map->data[i] |= 0x1 << (bit/*number of shifts left*/);
-        
+      
       }
     }
     
@@ -412,11 +412,11 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
 
   
   //-------------------------------------------------------------------/ step 4
-
+  //--------------------------------------------------------------------- / part 5
 
   
-  void *dir_ptr = calloc(BLKSIZE, sizeof(char));
-  newInode->data[0] = (block_t*)dir_ptr;
+  // void *dir_ptr = calloc(BLKSIZE, sizeof(char));
+  
   // read-in (not required, we are creating filesystem for first time, also zeroed because using calloc)
   dirent_t* dir = (dirent_t*)newInode->data[0]->data; // read
   
@@ -466,107 +466,14 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
   memcpy(parentInode->data[0], blockMemory, sizeof(block_t));
   memcpy(&myfs->groupdescriptor.groupdescriptor_info.inode_table[cur_dir_inode_number], parentInode, sizeof(inode_t));
 
-  //--------------------------------------------------------------------- part 5
-
-
-  //   // Step 4 Part 1: Access the Parent Directory's data from the Filesystem
-// // The data will be inside the Data Block location pointed to by the inode.data[0]
-// // Since this example uses no more than 1 Block, we'll only need to access that one block.
-// block_t* parent_data_block = (block_t*)parentInode->data[0]->data;
-
-// // // Step 4 Part 2: Modify the Parent Directory's data to append the new Directory Entry
-// // // Reinterpret the Block memory as a dirent_t Pointer to access it like an array
-// dirent_t* parent_data = (dirent_t*)parent_data_block;
-
-  // Your code has to be generic, i.e. has to be
-  // able to find out how many Directory Entries were in there before, and modify the next one.
-  // 
-  // 
-
   
-
- 
-
-
-
-
-
-
-
-// // Update the Parent Directory's data on the Filesystem after modifying it
-// memcpy(parent_data_block, parent_data, BLKSIZE);
-
-
-  
-
-
-  
-
-// 
-//   
-//   // Find the last Directory Entry in the Parent Directory to determine where to append the new entry
-
-  
-// int num_entries = 0;
-// while (parent_data[num_entries].name_len > 0) {
-//     num_entries++;
-// }
-
-
-// Append the new Directory Entry at the next available position
-  
-  
-
-
-  // memcpy((void*)(newDir_inode->data[0]), dir_ptr, BLKSIZE);
-  // free(dir_ptr);
- 
-
 }
 
-    // left shift 0 = 00000001
-    // left shift 1 = 00000010
-    // left shift 2 = 00000100
-    // left shift 3 = 00001000
-    // left shift 4 = 00010000
-    // left shift 5 = 00100000
-    // left shift 6 = 01000000
-    // left shift 7 = 10000000
-
-                    //   ┌───────────────────┐
-                    //   │    Directory    │
-                    //   │     Entry       │
-                    //   └──────┬────────┬─┘
-                    //          │        │
-                    //          ▼        ▼
-                    //   ┌───────────┐  ┌───────┐
-                    //   │ Inode Map │  │ Block │
-                    //   │           │  │ Map   │
-                    //   └─────┬─────┘  └───┬───┘
-                    //         │            │
-                    //         ▼            ▼
-                    // ┌──────────────┐   ┌───────┐
-                    // │    Inode     │   │ Data  │
-                    // │              │   │ Blocks│
-                    // └──────────────┘   └───────┘
-
-
-
-// step 4 // // 
-  // // Access the Parent Directory's data from the Filesystem
-  // void *parent_dir_data_ptr = calloc(BLKSIZE, sizeof(char));
-  // memcpy(parent_dir_data_ptr, parentDir_inode->data[0], BLKSIZE);
-  // dirent_t* parent_dir_data = (dirent_t*)parent_dir_data_ptr;
-
-  
-
-  // // Append the new Directory Entry
-  // parent_dir_data[i dont know the correct index ].inode = new_inode_index; 
-  // parent_dir_data[i dont know the correct index ].name_len = strlen(new_dirname);
-  // strcpy(parent_dir_data[i dont know the correct index ].name, new_dirname);
-
-  // // Update the Parent Directory's data on the Filesystem
-  // memcpy(parentDir_inode->data[0], parent_dir_data_ptr, BLKSIZE);
-
-  // // Free the memory allocated for the Parent Directory's data
-  // free(parent_dir_data_ptr);
+  // left shift 0 = 00000001
+  // left shift 1 = 00000010
+  // left shift 2 = 00000100
+  // left shift 3 = 00001000
+  // left shift 4 = 00010000
+  // left shift 5 = 00100000
+  // left shift 6 = 01000000
+  // left shift 7 = 10000000
